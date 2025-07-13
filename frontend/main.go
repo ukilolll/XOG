@@ -20,6 +20,7 @@ func main() {
 	fs := http.FileServer(http.Dir("./static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
+	log.Println("server run at port ",PORT)
 	err := http.ListenAndServe(fmt.Sprintf(":%v",PORT),mux)
 	if err != nil {
 		log.Panic(err)

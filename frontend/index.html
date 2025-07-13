@@ -26,26 +26,34 @@
       text-align: center;
     }
 
-    .board {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 4vw;
-      width: 90vw;
-      max-width: 400px;
-      aspect-ratio: 1 / 1;
-    }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4vw;
+    width: 90vw;
+    max-width: 400px;
+    aspect-ratio: 1 / 1;
+    min-height: 300px;
+  }
 
-    .cell {
-      background-color: white;
-      border: 2px solid #ccc;
-      font-size: 8vw;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      aspect-ratio: 1 / 1;
-    }
+  .cell {
+    background-color: white;
+    border: 2px solid #ccc;
+    font-size: 8vw;          
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    height: auto;
+
+    overflow: hidden;        
+    user-select: none;   
+    font-size: min(8vw, 60px);
+  }
 
     .cell:hover {
       background-color: #e0f7fa;
@@ -81,6 +89,6 @@
   <div class="board" id="board"></div>
   <div class="status" id="status">Connecting...</div>
   <div class="result" id="result"></div>
-  <script src="/static/index.js"></script>
+  <script src="./static/index.js"></script>
 </body>
 </html>

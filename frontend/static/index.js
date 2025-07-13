@@ -33,13 +33,18 @@ cells.push(cell);
 }
 
 socket.onopen = () => {
-    console.log("server connect")
+    console.log("server connect!!!")
     statusEl.textContent = "Waiting for another player...";
 };
 
 socket.onmessage = (event) => {
     console.log("Server:", event.data);
-    const msg = JSON.parse(event.data);
+    let msg = {}
+    try{
+        msg = JSON.parse(event.data);
+    }catch(err){
+        console.log("server ping")
+    }
 
     switch (msg.type) {
     case "wait":
@@ -69,7 +74,8 @@ socket.onmessage = (event) => {
 
     case "end":
         let result = msg.data;
-        if (result === "") {
+        console.log(result,"draw")
+        if (result === "draw") {
         resultId.textContent = "It's a draw!";
         } else if (result === "dis") {
         resultId.textContent = "Opponent disconnected.";

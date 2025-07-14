@@ -17,7 +17,8 @@ func main() {
 	go queue.RunQueue()
 
 	r := http.NewServeMux()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	
+	r.HandleFunc("/apiv1", func(w http.ResponseWriter, r *http.Request) {
 		service.ServeWs(w, r, queue)
 	})
 

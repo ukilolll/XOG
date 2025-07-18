@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 
 	ws "github.com/gorilla/websocket"
@@ -110,14 +111,30 @@ func (g *gameResource) runGame() {
 				result := checkWin(g.Board)
 				// if game end
 				if !(result == "") {
+					//create WaitGroup for confirm message already sended
+					var wg sync.WaitGroup
+					for _,v := range g.Users{
+						wg.Add(1)
+						go func (confirmSend chan struct{}){
+							for range  confirmSend{
+								wg.Done()
+								return
+							}
+						}(v.subscription.conn.confirmSend)
+					}
+					//send message 
 					sendPlayer1 <- msg{Category: END, Data: result}
 					sendplayer2 <- msg{Category: END, Data: result}
+					//wait for confirm
+					wg.Wait()
 
 					for _, v := range g.Users {
 						close(v.subscription.conn.send)
 					}
+					
 					return
 				}
+
 
 				g.Turn= ChangeTurn(playerRole)
 				if player1.Role == g.Turn{
@@ -166,11 +183,12 @@ func gameslayer(conns []*ws.Conn, roomId string) {
 	//for same channel hub and pump
 	gameInput := make(chan payload, 256)
 	unregister := make(chan struct{})
+	confirmSend := make(chan struct{})
 
 	for i, conn := range conns {
 		playername := fmt.Sprintf("player%v", i+1)
 		//send = ตัวรับจาก hub ที่ส่งมาหา pump
-		c := &connection{send: make(chan msg, 256), ws: conn}
+		c := &connection{send: make(chan msg), ws: conn,confirmSend:confirmSend}
 		//unregister and gameInput pump ตัวส่งส่งไปหา hub
 		s := &subscription{conn: c, unregister: unregister, gameInput: gameInput, name: playername}
 		go s.writePump() //server read from client

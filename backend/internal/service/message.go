@@ -49,6 +49,8 @@ type connection struct {
 	ws *ws.Conn
 	// important ให้ hub ส่งกับไปยังลูกค้ายถูก
 	send chan msg
+	confirmSend chan struct{}
+	
 }
 func (c *connection) write(mt int, payload msg) error {
 	data,err := json.Marshal(payload)
@@ -61,7 +63,6 @@ func (c *connection) write(mt int, payload msg) error {
 
 type subscription struct {
 	conn *connection
-	send chan msg
 	unregister chan struct {}
 	gameInput chan payload
 	name string // identify
@@ -121,14 +122,11 @@ func (s *subscription) writePump() {
 			log.Printf("write error: %v", err)
 			break  // แก้เป็น break แทน return เพื่อให้ defer ทำงานชัวร์
 		}
+
+		if msg.Category == END{
+			s.conn.confirmSend <- struct{}{}
+		}
 	}
 
 	conn.write(ws.CloseMessage, msg{})
 }
-	// //ถ้าไม่มีข้อความเข้ามาภายในช่วงเวลาที่กำหนด (pongWait) การเชื่อมต่อจะหมดอายุ (timeout)
-	// conn.SetReadDeadline(time.Now().Add(pongWait))
-	// //ทุกครั้งที่ได้รับ pong, จะขยายเวลา deadline ใหม่ออกไปอีก pongWait วินาที เพื่อให้การเชื่อมต่อยังคงอยู่
-	// conn.SetPongHandler(func(string) error {
-	// 	 conn.SetReadDeadline(time.Now().Add(pongWait)); 
-	// 	 return nil 
-	// })

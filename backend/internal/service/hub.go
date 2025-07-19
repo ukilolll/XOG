@@ -5,10 +5,9 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"sync"
 	"time"
 
-	ws "github.com/gorilla/websocket"
+	"sync"
 )
 
 // tip
@@ -27,7 +26,8 @@ type gameResource struct {
 	Turn  string
 
 	gameInput  chan payload
-	unregister chan struct{}
+	unregister chan *subscription
+	confirmSend chan struct{}
 }
 
 func (g *gameResource) runGame() {
@@ -67,7 +67,7 @@ func (g *gameResource) runGame() {
 	connPlayer2.SetPongHandler(func(appData string) error {
 		return connPlayer2.SetReadDeadline(time.Now().Add(pongWait))
 	})
-	//add read Deadline 
+	//add read Deadline to start player
 	if player1.Role == g.Turn{
 		connPlayer1.SetReadDeadline(time.Now().Add(pongWait))
 	}else{
@@ -107,11 +107,11 @@ func (g *gameResource) runGame() {
 
 				sendPlayer1 <- msg{Category: PLAY, Data: map[string]any{"value": playerRole , "index": row*3+col}}
 				sendplayer2 <- msg{Category: PLAY, Data: map[string]any{"value": playerRole , "index": row*3+col}}
-
+				
 				result := checkWin(g.Board)
 				// if game end
 				if !(result == "") {
-					//create WaitGroup for confirm message already sended
+					//create WaitGroup for confirm message already sended before end thread
 					var wg sync.WaitGroup
 					for _,v := range g.Users{
 						wg.Add(1)
@@ -135,7 +135,6 @@ func (g *gameResource) runGame() {
 					return
 				}
 
-
 				g.Turn= ChangeTurn(playerRole)
 				if player1.Role == g.Turn{
 					connPlayer1.SetReadDeadline(time.Now().Add(pongWait))
@@ -149,6 +148,8 @@ func (g *gameResource) runGame() {
 			}
 
 		case <-g.unregister:
+			sendPlayer1 <- msg{Category: END, Data: "dis"}
+			sendplayer2 <- msg{Category: END, Data: "dis"}
 			sendPlayer1 <- msg{Category: END, Data: "dis"}
 			sendplayer2 <- msg{Category: END, Data: "dis"}
 			for _, v := range g.Users {
@@ -174,30 +175,28 @@ func ServeWs(w http.ResponseWriter, r *http.Request, queue *queue) {
 	queue.addQueue(conn)
 }
 
-func gameslayer(conns []*ws.Conn, roomId string) {
+func gameslayer(subs []*subscription, roomId string) {
 	log.Printf("game room:%v created\n", roomId)
 	users := make(map[string]*playerData)
 	//ทุก goroutine มี same channel แต่ มีตัวรับแค่ server (no boardcast on problem)
 	//แต่ตัวไหน ตัวส่งไม่รู้ สุดท้ายpumpก็ต้องมี identifer อยู่ดี (userid,pointer websocket.Conn,unique name, etc)
 
 	//for same channel hub and pump
-	gameInput := make(chan payload, 256)
-	unregister := make(chan struct{})
+	gameInput := make(chan payload)
+	unregister := make(chan *subscription)
 	confirmSend := make(chan struct{})
 
-	for i, conn := range conns {
+	for i, s := range subs {
 		playername := fmt.Sprintf("player%v", i+1)
-		//send = ตัวรับจาก hub ที่ส่งมาหา pump
-		c := &connection{send: make(chan msg), ws: conn,confirmSend:confirmSend}
-		//unregister and gameInput pump ตัวส่งส่งไปหา hub
-		s := &subscription{conn: c, unregister: unregister, gameInput: gameInput, name: playername}
-		go s.writePump() //server read from client
-		go s.readPump()  //server write from clinet
-
+		//add data for game hub
+		s.conn.confirmSend = confirmSend
+		s.unregister = unregister
+		s.gameInput = gameInput
+		s.name = playername
 		users[playername] = &playerData{subscription: s}
 	}
 
-	g := gameResource{Users: users, gameInput: gameInput, unregister: unregister}
+	g := gameResource{Users: users, gameInput: gameInput, unregister: unregister,confirmSend:confirmSend}
 	go g.runGame()
 }
 
@@ -236,3 +235,4 @@ func try(callback func()) (ok bool) {
 // 	OutHub:  make(chan regisHub),
 // 	Rooms:   make(map[string]chan msg),// server เก็บ channel ลูกค่าย
 // }
+

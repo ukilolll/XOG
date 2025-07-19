@@ -18,12 +18,12 @@ const (
 )
 
 const (
-	Wait category = "wait"
 	START category = "start"
 	TURN category = "turn"
 	ROLE category = "role"
 	PLAY category = "play"
 	END category = "end"
+	PREPAREDISCONNECT category = "preparedisconnect"
 )
 
 var upgrader = ws.Upgrader{
@@ -50,7 +50,6 @@ type connection struct {
 	// important ให้ hub ส่งกับไปยังลูกค้ายถูก
 	send chan msg
 	confirmSend chan struct{}
-	
 }
 func (c *connection) write(mt int, payload msg) error {
 	data,err := json.Marshal(payload)
@@ -63,7 +62,7 @@ func (c *connection) write(mt int, payload msg) error {
 
 type subscription struct {
 	conn *connection
-	unregister chan struct {}
+	unregister chan *subscription
 	gameInput chan payload
 	name string // identify
 }
@@ -74,7 +73,7 @@ func (s *subscription) readPump() {
 	conn := s.conn.ws
 	println("create readPump",s.conn)
 	defer func() {
-		s.unregister <- struct{}{}
+		s.unregister <- s
 		conn.Close()
 		println("close readPump",s.conn)
 	}()
@@ -82,17 +81,17 @@ func (s *subscription) readPump() {
 	conn.SetReadLimit(maxMessageSize)
 
 	var msg msg
+	var syntaxErr *json.SyntaxError
+	var unmarshalErr *json.UnmarshalTypeError
 	for {
 		err := conn.ReadJSON(&msg)
 		if err != nil { 
-			// if error just log 
+			//if error just log 
 			if ws.IsUnexpectedCloseError(err, ws.CloseGoingAway, ws.CloseAbnormalClosure) {
 				log.Printf("Unexpected close error: %v", err)
 			}
-			
+	
 			// Check if it's a JSON decode error (bad format)
-			var syntaxErr *json.SyntaxError
-			var unmarshalErr *json.UnmarshalTypeError
 			if errors.As(err, &syntaxErr) || errors.As(err, &unmarshalErr) {
 				continue // skip this iteration, don't close connection
 			}
@@ -126,7 +125,15 @@ func (s *subscription) writePump() {
 		if msg.Category == END{
 			s.conn.confirmSend <- struct{}{}
 		}
+
 	}
 
 	conn.write(ws.CloseMessage, msg{})
 }
+	// //ถ้าไม่มีข้อความเข้ามาภายในช่วงเวลาที่กำหนด (pongWait) การเชื่อมต่อจะหมดอายุ (timeout)
+	// conn.SetReadDeadline(time.Now().Add(pongWait))
+	// //ทุกครั้งที่ได้รับ pong, จะขยายเวลา deadline ใหม่ออกไปอีก pongWait วินาที เพื่อให้การเชื่อมต่อยังคงอยู่
+	// conn.SetPongHandler(func(string) error {
+	// 	 conn.SetReadDeadline(time.Now().Add(pongWait)); 
+	// 	 return nil 
+	// })

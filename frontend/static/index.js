@@ -64,6 +64,7 @@ socket.onmessage = (event) => {
         const turn = msg.data; // "x" or "o"
         myTurn = (turn === myRole);
         statusEl.textContent = myTurn ? "Your turn!" : "Opponent's turn";
+
         break;
 
     case "play":
@@ -72,24 +73,33 @@ socket.onmessage = (event) => {
         cells[index].textContent = value;
         break;
 
+    case "disconnect":
+        let data = msg.data
+        if (data === myRole){
+            resultId.textContent = "Time Out disconnected."
+        }else{
+            resultId.textContent = "You win!!! Opponent disconnect."
+        }
+        break;
+
     case "end":
         let result = msg.data;
         console.log(result,"draw")
         if (result === "draw") {
-        resultId.textContent = "It's a draw!";
-        } else if (result === "dis") {
-        resultId.textContent = "Opponent disconnected.";
-        } else {
-        resultId.textContent = result === myRole ? "You win!" : "You lose!";
+            resultId.textContent = "It's a draw!";
+        }
+        else {
+            resultId.textContent = result === myRole ? "You win!" : "You lose!";
         }
         myTurn = false;
         break;
     }
 };
 
-socket.onclose = () => {
-    console.log("server disconnect")
-    statusEl.textContent = "Connection closed.";
+socket.onclose = (event) => {
+    console.log("Code:", event.code);     // e.g., 1000 = normal, 1006 = abnormal
+    console.log("Reason:", event.reason); 
+    statusEl.textContent = "Connection closed";
 };
 
 socket.onerror = (err) => {

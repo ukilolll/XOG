@@ -61,13 +61,7 @@ func (g *gameResource) runGame() {
 	sendPlayer1 <- msg{Category: TURN, Data: g.Turn}
 	sendplayer2 <- msg{Category: TURN, Data: g.Turn}
 
-	connPlayer1.SetPongHandler(func(appData string) error {
-		return connPlayer1.SetReadDeadline(time.Now().Add(pongWait))
-	})
-	connPlayer2.SetPongHandler(func(appData string) error {
-		return connPlayer2.SetReadDeadline(time.Now().Add(pongWait))
-	})
-	//add read Deadline to start player
+	// add read Deadline to start player
 	if player1.Role == g.Turn{
 		connPlayer1.SetReadDeadline(time.Now().Add(pongWait))
 	}else{
@@ -84,7 +78,6 @@ func (g *gameResource) runGame() {
 			if !(playerRole == g.Turn) {
 				continue
 			}
-
 
 			//run board
 			if i.Msg.Category == PLAY {
@@ -110,13 +103,14 @@ func (g *gameResource) runGame() {
 				
 				result := checkWin(g.Board)
 				// if game end
-				if !(result == "") {
+				if result != "" {
 					//create WaitGroup for confirm message already sended before end thread
 					var wg sync.WaitGroup
 					for _,v := range g.Users{
 						wg.Add(1)
 						go func (confirmSend chan struct{}){
 							for range  confirmSend{
+								//gone message from writePump() and Done thread
 								wg.Done()
 								return
 							}
@@ -134,8 +128,11 @@ func (g *gameResource) runGame() {
 					
 					return
 				}
-
+				// stop readline current user and add deadline for another user
+				test := g.Users[i.Player].conn.ws
+				test.SetReadDeadline(time.Time{})
 				g.Turn= ChangeTurn(playerRole)
+
 				if player1.Role == g.Turn{
 					connPlayer1.SetReadDeadline(time.Now().Add(pongWait))
 				}else{
@@ -147,11 +144,10 @@ func (g *gameResource) runGame() {
 
 			}
 
-		case <-g.unregister:
-			sendPlayer1 <- msg{Category: END, Data: "dis"}
-			sendplayer2 <- msg{Category: END, Data: "dis"}
-			sendPlayer1 <- msg{Category: END, Data: "dis"}
-			sendplayer2 <- msg{Category: END, Data: "dis"}
+		case s := <-g.unregister:
+			role :=  g.Users[s.name].Role 
+			sendPlayer1 <- msg{Category: DISCONNECT, Data: role}
+			sendplayer2 <- msg{Category: DISCONNECT, Data: role}
 			for _, v := range g.Users {
 				try(func() {
 					close(v.subscription.conn.send)
@@ -235,4 +231,5 @@ func try(callback func()) (ok bool) {
 // 	OutHub:  make(chan regisHub),
 // 	Rooms:   make(map[string]chan msg),// server เก็บ channel ลูกค่าย
 // }
+
 

@@ -12,7 +12,7 @@ import (
 
 const (
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 20 * time.Second
+	pongWait = 10 * time.Second
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
 )
@@ -24,6 +24,7 @@ const (
 	PLAY category = "play"
 	END category = "end"
 	PREPAREDISCONNECT category = "preparedisconnect"
+	DISCONNECT = "disconnect"
 )
 
 var upgrader = ws.Upgrader{
@@ -71,11 +72,11 @@ type subscription struct {
 //and make message struct and send to Hub
 func (s *subscription) readPump() {
 	conn := s.conn.ws
-	println("create readPump",s.conn)
+	log.Println("create readPump",s.conn)
 	defer func() {
 		s.unregister <- s
-		conn.Close()
-		println("close readPump",s.conn)
+		conn.WriteMessage(ws.CloseNormalClosure,[]byte("end"))
+		log.Println("close readPump",s.conn)
 	}()
 
 	conn.SetReadLimit(maxMessageSize)
@@ -106,10 +107,10 @@ func (s *subscription) readPump() {
 // and send to client
 func (s *subscription) writePump() {
 	conn := s.conn
-	println("create writePump",s.conn)
+	log.Println("create writePump",s.conn)
 	defer func() {
-		conn.ws.Close()
-		println("close writePump",s.conn)
+		conn.ws.WriteMessage(ws.CloseNormalClosure,[]byte("end"))
+		log.Println("close writePump",s.conn)
 	}()
 
 
@@ -128,12 +129,4 @@ func (s *subscription) writePump() {
 
 	}
 
-	conn.write(ws.CloseMessage, msg{})
 }
-	// //ถ้าไม่มีข้อความเข้ามาภายในช่วงเวลาที่กำหนด (pongWait) การเชื่อมต่อจะหมดอายุ (timeout)
-	// conn.SetReadDeadline(time.Now().Add(pongWait))
-	// //ทุกครั้งที่ได้รับ pong, จะขยายเวลา deadline ใหม่ออกไปอีก pongWait วินาที เพื่อให้การเชื่อมต่อยังคงอยู่
-	// conn.SetPongHandler(func(string) error {
-	// 	 conn.SetReadDeadline(time.Now().Add(pongWait)); 
-	// 	 return nil 
-	// })

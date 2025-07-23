@@ -72,6 +72,30 @@
       text-align: center;
     }
 
+      button {
+      margin-top: 1rem;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      background-color: #28a745;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+      background-color: #218838;
+      transform: scale(1.05);
+    }
+
+    button:active {
+      background-color: #1e7e34;
+      transform: scale(0.98);
+    }
+
     @media (max-width: 500px) {
       .cell {
         font-size: 10vw;
@@ -89,6 +113,7 @@
   <div class="board" id="board"></div>
   <div class="status" id="status">Connecting...</div>
   <div class="result" id="result"></div>
-  <script src="./static/index.js?v=1.1.10"></script>
+  <div class="divbutton"  id ="divbutton"></div>
+  <script src="./static/index.js?v=1.3.0"></script>
 </body>
 </html>

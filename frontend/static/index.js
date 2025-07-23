@@ -3,6 +3,7 @@ const board = document.getElementById("board");
 const statusEl = document.getElementById("status");
 const role = document.getElementById("role");
 const resultId = document.getElementById("result");
+const divbutton = document.getElementById("divbutton")
 
 let myRole = ""; // "x" or "o"
 let myTurn = false;
@@ -64,7 +65,6 @@ socket.onmessage = (event) => {
         const turn = msg.data; // "x" or "o"
         myTurn = (turn === myRole);
         statusEl.textContent = myTurn ? "Your turn!" : "Opponent's turn";
-
         break;
 
     case "play":
@@ -80,6 +80,7 @@ socket.onmessage = (event) => {
         }else{
             resultId.textContent = "You win!!! Opponent disconnect."
         }
+        divbutton.innerHTML =  `<button onclick="location.reload()">play again</button>`
         break;
 
     case "end":
@@ -92,6 +93,7 @@ socket.onmessage = (event) => {
             resultId.textContent = result === myRole ? "You win!" : "You lose!";
         }
         myTurn = false;
+        divbutton.innerHTML =  `<button onclick="location.reload()">play again</button>`
         break;
     }
 };

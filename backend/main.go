@@ -8,7 +8,7 @@ import (
 )
 
 const(
-	PORT = 8080
+	PORT = 3001
 )
 
 func main() {
